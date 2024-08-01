@@ -34,7 +34,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t api_produits:latest ./API_Produits/API_Produits
+          docker build -t api_produits:latest ./API_Commandes/API_Commandes
           docker images
 
 
@@ -49,8 +49,8 @@ jobs:
       - name: Publish Docker image
         run: |
           echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-          docker tag api_produits "${{ secrets.DOCKERHUB_USERNAME }}/api_produits:latest"
-          docker push "${{ secrets.DOCKERHUB_USERNAME }}/api_produits:latest"
+          docker tag api_produits "${{ secrets.DOCKERHUB_USERNAME }}/api_commandes:latest"
+          docker push "${{ secrets.DOCKERHUB_USERNAME }}/api_commandes:latest"
 
 
       - name: SonarCloud Scan
@@ -59,10 +59,10 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
-            -Dsonar.projectKey="MSPR-Paye-Ton-Kawa_API-Produits"
+            -Dsonar.projectKey="MSPR-Paye-Ton-Kawa_API-Commandes"
             -Dsonar.organization="mspr-paye-ton-kawa"
             -Dsonar.host.url=https://sonarcloud.io
-            -Dsonar.sources="./API_Produits/API_Produits"
+            -Dsonar.sources="./API_Commandes/API_Commandes"
        
 
       - name: Deploy to staging
