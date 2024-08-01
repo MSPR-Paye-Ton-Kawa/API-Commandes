@@ -44,7 +44,7 @@ jobs:
         timeout-minutes: 1
         run: |
           #Run tests within the Docker container
-         docker run api_commandes dotnet test --no-restore --verbosity normal
+          docker run api_commandes dotnet test --no-restore --verbosity normal
      
       - name: Login to DockerHub
         run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
