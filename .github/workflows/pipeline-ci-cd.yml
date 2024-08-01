@@ -34,7 +34,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t api_commandes:latest ./API_Commandes/API_Commandes
+          docker build -t api_commandes:latest ./API_Commandes
           docker images
 
 
@@ -62,7 +62,7 @@ jobs:
             -Dsonar.projectKey="MSPR-Paye-Ton-Kawa_API-Commandes"
             -Dsonar.organization="mspr-paye-ton-kawa"
             -Dsonar.host.url=https://sonarcloud.io
-            -Dsonar.sources="./API_s/API_Commandes"
+            -Dsonar.sources="./API_Commandes"
        
 
       - name: Deploy to staging
