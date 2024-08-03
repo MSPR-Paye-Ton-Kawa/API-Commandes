@@ -398,3 +398,6 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+API_Commandes/Database/orders.db
+API_Commandes/Database/orders.db-shm
+API_Commandes/Database/orders.db-wal
