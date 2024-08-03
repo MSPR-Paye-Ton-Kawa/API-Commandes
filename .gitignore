@@ -265,8 +265,6 @@ ServiceFabricBackup/
 *.mdf
 *.ldf
 *.ndf
-*.db-shm
-*.db-wal
 
 # Business Intelligence projects
 *.rdl.data
@@ -398,6 +396,3 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
-API_Commandes/Database/orders.db
-API_Commandes/Database/orders.db-shm
-API_Commandes/Database/orders.db-wal
