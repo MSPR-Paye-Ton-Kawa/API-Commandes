@@ -1,7 +1,5 @@
-﻿using System.Text.Json.Serialization;
-
 namespace API_Commandes.Models
-{
+
     public class Order
     {
         public int OrderId { get; set; }
@@ -10,7 +8,6 @@ namespace API_Commandes.Models
         public string Status { get; set; }
 
         public ICollection<OrderItem> OrderItems { get; set; }
-
         public ICollection<Payment> Payments { get; set; }
     }
 }
