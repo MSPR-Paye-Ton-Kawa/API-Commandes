@@ -24,31 +24,22 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v1
+        uses: actions/checkout@v3
 
       - name: Set up .NET Core
         uses: actions/setup-dotnet@v2
         with:
           dotnet-version: '6.0.x' 
 
-      - name: Build Docker image
+      - name: Build and Test Docker image
         run: |
           docker build -t api_commandes:latest .
-          docker images
-
-      - name: Run Tests
-        run: |
-          docker run --rm api_commandes:latest dotnet test --no-restore --verbosity normal
           
-      - name: Login to DockerHub
-        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-
       - name: Publish Docker image
+        if: success() # Only publish if the build and test steps are successful
         run: |
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-          docker tag api_commandes "${{ secrets.DOCKERHUB_USERNAME }}/api_commandes:latest"
+          docker tag api_commandes:latest "${{ secrets.DOCKERHUB_USERNAME }}/api_commandes:latest"
           docker push "${{ secrets.DOCKERHUB_USERNAME }}/api_commandes:latest"
-
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2.2.0
@@ -60,25 +51,22 @@ jobs:
             -Dsonar.organization="mspr-paye-ton-kawa"
             -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.sources="./API_Commandes"
-       
 
       - name: Deploy to staging
         if: github.ref == 'refs/heads/release' && github.event_name == 'push'
         run: |
-          # Example deployment step to staging environment
           echo "Deploying Docker image to staging environment:"
-          docker pull "${{ secrets.DOCKERHUB_USERNAME }}/my-docker-image:latest"
+          docker pull "${{ secrets.DOCKERHUB_USERNAME }}/api_commandes:latest"
           docker stop staging-container || true
           docker rm staging-container || true
-          docker run -d --name staging-container -p 8081:80 "${{ secrets.DOCKERHUB_USERNAME }}/my-docker-image:latest"
+          docker run -d --name staging-container -p 8081:80 "${{ secrets.DOCKERHUB_USERNAME }}/api_commandes:latest"
           echo "Application deployed to http://localhost:8081"
 
       - name: Deploy to production
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
-          # Example deployment step to production environment
-          docker pull "${{ secrets.DOCKERHUB_USERNAME }}/my-docker-image:latest"
+          docker pull "${{ secrets.DOCKERHUB_USERNAME }}/api_commandes:latest"
           docker stop production-container || true
           docker rm production-container || true
-          docker run -d --name production-container -p 8080:80 "${{ secrets.DOCKERHUB_USERNAME }}/my-docker-image:latest"
+          docker run -d --name production-container -p 8080:80 "${{ secrets.DOCKERHUB_USERNAME }}/api_commandes:latest"
           echo "Application deployed to http://localhost:8080"
