@@ -29,28 +29,49 @@ namespace API_Commandes.Controllers
         [HttpGet("with-payments")]
         public async Task<ActionResult<IEnumerable<Order>>> GetOrdersWithPayments()
         {
-            return await _context.Orders
+            var orders = await _context.Orders
                 .Include(o => o.Payments)
                 .ToListAsync();
+
+            if (orders == null)
+            {
+                return NotFound();
+            }
+
+            return orders;
         }
 
         // GET: api/Orders/with-orderitems
         [HttpGet("with-orderitems")]
         public async Task<ActionResult<IEnumerable<Order>>> GetOrdersWithOrderItems()
         {
-            return await _context.Orders
+            var orders = await _context.Orders
                 .Include(o => o.OrderItems)
                 .ToListAsync();
+
+            if (orders == null)
+            {
+                return NotFound();
+            }
+
+            return orders;
         }
 
         // GET: api/Orders/with-all
         [HttpGet("with-all")]
         public async Task<ActionResult<IEnumerable<Order>>> GetOrdersWithAll()
         {
-            return await _context.Orders
-                .Include(o => o.OrderItems)
-                .Include(o => o.Payments)
-                .ToListAsync();
+            var orders = await _context.Orders
+                 .Include(o => o.OrderItems)
+                 .Include(o => o.Payments)
+                 .ToListAsync();
+
+            if (orders == null)
+            {
+                return NotFound();
+            }
+
+            return orders;
         }
 
         // GET: api/Orders/5
@@ -104,6 +125,11 @@ namespace API_Commandes.Controllers
         [HttpPost]
         public async Task<ActionResult<Order>> PostOrder(Order order)
         {
+            if (order == null)
+            {
+                return BadRequest();
+            }
+
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
 
