@@ -31,7 +31,7 @@ WORKDIR /src
 
 # Copier les fichiers de test
 COPY ["API_Commandes.Tests/API_Commandes.Tests.csproj", "API_Commandes.Tests/"]
-COPY ["API_Commandes/"] "API_Commandes/"
+
 # Restaurer et exécuter les tests
 RUN dotnet restore "API_Commandes.Tests/API_Commandes.Tests.csproj"
 RUN dotnet test "API_Commandes.Tests/API_Commandes.Tests.csproj" --no-restore --verbosity normal
