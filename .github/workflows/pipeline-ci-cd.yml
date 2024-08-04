@@ -31,18 +31,15 @@ jobs:
         with:
           dotnet-version: '6.0.x' 
 
-
-      - name: Build Docker image for application
+      - name: Build Docker image
         run: |
-          docker build -t api_commandes:latest ./API_Commandes
+          docker build -t api_commandes:latest .
+          docker images
 
-      - name: Build Docker image for tests
+      - name: Run Tests
         run: |
-          docker build -t api_commandes_tests:latest ./API_Commandes.Tests
-
-      - name: Run tests in Docker container
-        run: |
-          docker run --rm api_commandes_tests
+          docker build -t api_commandes_tests:latest -f Dockerfile.tests .
+          docker run --rm api_commandes_tests dotnet test --no-restore --verbosity normal
 
       - name: Login to DockerHub
         run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
