@@ -38,9 +38,8 @@ jobs:
 
       - name: Run Tests
         run: |
-          docker build -t api_commandes_tests:latest -f Dockerfile.tests .
-          docker run --rm api_commandes_tests dotnet test --no-restore --verbosity normal
-
+          docker run --rm api_commandes:latest dotnet test --no-restore --verbosity normal
+          
       - name: Login to DockerHub
         run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
