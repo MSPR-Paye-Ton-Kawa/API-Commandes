@@ -35,11 +35,15 @@ jobs:
         run: |
           docker build -t api_commandes:latest .
           
+      - name: Login to DockerHub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
       - name: Publish Docker image
         if: success() # Only publish if the build and test steps are successful
         run: |
-          docker tag api_commandes:latest "${{ secrets.DOCKERHUB_USERNAME }}/api_commandes:latest"
-          docker push "${{ secrets.DOCKERHUB_USERNAME }}/api_commandes:latest"
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+            docker tag api_commandes "${{ secrets.DOCKERHUB_USERNAME }}/api_commandes:latest"
+            docker push "${{ secrets.DOCKERHUB_USERNAME }}/api_commandes:latest"
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2.2.0
