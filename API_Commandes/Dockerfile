@@ -13,7 +13,7 @@ WORKDIR /src
 COPY ["API_Commandes/API_Commandes.csproj", "."]
 COPY ["./API_Commandes.Tests/API_Commandes.Tests.csproj", "./API_Commandes.Tests/"]
 RUN dotnet restore "API_Commandes/API_Commandes.csproj"
-COPY . .
+RUN dotnet restore "API_Commandes.Tests/API_Commandes.Tests.csproj"
 WORKDIR "/src/."
 RUN dotnet build "API_Commandes.csproj" -c Release -o /app/build
 
