@@ -11,9 +11,9 @@ EXPOSE 443
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
 WORKDIR /src
 COPY ["API_Commandes/API_Commandes.csproj", "."]
-COPY ["./API_Commandes.Tests/API_Commandes.Tests.csproj", "./API_Commandes.Tests/"]
+COPY ["../API_Commandes.Tests/API_Commandes.Tests.csproj", "../API_Commandes.Tests/"]
 RUN dotnet restore "API_Commandes/API_Commandes.csproj"
-RUN dotnet restore "API_Commandes.Tests/API_Commandes.Tests.csproj"
+RUN dotnet restore "../API_Commandes.Tests/API_Commandes.Tests.csproj"
 WORKDIR "/src/."
 RUN dotnet build "API_Commandes.csproj" -c Release -o /app/build
 
