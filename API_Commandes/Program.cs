@@ -5,14 +5,20 @@ using API_Commandes.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+//builder.Services.AddControllers().AddJsonOptions(options =>
+//{
+//    // �viter les boucles infinies avec la gestion des r�f�rences
+//    options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
+//    options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+//});
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
-    // �viter les boucles infinies avec la gestion des r�f�rences
-    options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
+    // Simplifier la gestion des références circulaires
+    options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+
+    // Ignorer les propriétés nulles
     options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
 });
-
-
 
 // Add DbContext and SQLite configuration
 builder.Services.AddDbContext<AppDbContext>(options =>
