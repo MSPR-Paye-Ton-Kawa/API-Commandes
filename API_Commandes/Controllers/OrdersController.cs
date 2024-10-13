@@ -22,45 +22,6 @@ namespace API_Commandes.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Order>>> GetOrders()
         {
-            return await _context.Orders.ToListAsync();
-        }
-
-        // GET: api/Orders/with-payments
-        [HttpGet("with-payments")]
-        public async Task<ActionResult<IEnumerable<Order>>> GetOrdersWithPayments()
-        {
-            var orders = await _context.Orders
-                .Include(o => o.Payments)
-                .ToListAsync();
-
-            if (orders == null)
-            {
-                return NotFound();
-            }
-
-            return orders;
-        }
-
-        // GET: api/Orders/with-orderitems
-        [HttpGet("with-orderitems")]
-        public async Task<ActionResult<IEnumerable<Order>>> GetOrdersWithOrderItems()
-        {
-            var orders = await _context.Orders
-                .Include(o => o.OrderItems)
-                .ToListAsync();
-
-            if (orders == null)
-            {
-                return NotFound();
-            }
-
-            return orders;
-        }
-
-        // GET: api/Orders/with-all
-        [HttpGet("with-all")]
-        public async Task<ActionResult<IEnumerable<Order>>> GetOrdersWithAll()
-        {
             var orders = await _context.Orders
                  .Include(o => o.OrderItems)
                  .Include(o => o.Payments)
@@ -130,10 +91,39 @@ namespace API_Commandes.Controllers
                 return BadRequest();
             }
 
+            order.Date = DateTime.UtcNow;
+           
+            if (order.Payments != null)
+            {
+                foreach (var payment in order.Payments)
+                {
+                    payment.PaymentDate = DateTime.UtcNow; 
+                }
+            }
+
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetOrder), new { id = order.OrderId }, order);
+        }
+
+        // PUT: api/Orders/validate/{id}
+        [HttpPut("validate/{id}")]
+        public async Task<IActionResult> ValidateOrder(int id)
+        {
+            var order = await _context.Orders.FindAsync(id);
+            if (order == null)
+            {
+                return NotFound();
+            }
+
+            // Mettre à jour le statut à "Validated"
+            order.Status = "Validated";
+
+            _context.Entry(order).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
 
         // DELETE: api/Orders/5

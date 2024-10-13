@@ -186,7 +186,7 @@ namespace API_Commandes.Tests
         }
 
         [Fact]
-        public async Task GetOrdersWithPayments_ReturnsOrdersWithPayments()
+        public async Task GetOrders_ReturnsOrdersWithAllDetails()
         {
             // Arrange
             using (var context = new AppDbContext(_dbContextOptions))
@@ -194,43 +194,7 @@ namespace API_Commandes.Tests
                 var controller = new OrdersController(context);
 
                 // Act
-                var result = await controller.GetOrdersWithPayments();
-
-                // Assert
-                var actionResult = Assert.IsType<ActionResult<IEnumerable<Order>>>(result);
-                var orders = Assert.IsAssignableFrom<IEnumerable<Order>>(actionResult.Value);
-                Assert.All(orders, o => Assert.NotNull(o.Payments));
-            }
-        }
-
-        [Fact]
-        public async Task GetOrdersWithOrderItems_ReturnsOrdersWithOrderItems()
-        {
-            // Arrange
-            using (var context = new AppDbContext(_dbContextOptions))
-            {
-                var controller = new OrdersController(context);
-
-                // Act
-                var result = await controller.GetOrdersWithOrderItems();
-
-                // Assert
-                var actionResult = Assert.IsType<ActionResult<IEnumerable<Order>>>(result);
-                var orders = Assert.IsAssignableFrom<IEnumerable<Order>>(actionResult.Value);
-                Assert.All(orders, o => Assert.NotNull(o.OrderItems));
-            }
-        }
-
-        [Fact]
-        public async Task GetOrdersWithAll_ReturnsOrdersWithAllDetails()
-        {
-            // Arrange
-            using (var context = new AppDbContext(_dbContextOptions))
-            {
-                var controller = new OrdersController(context);
-
-                // Act
-                var result = await controller.GetOrdersWithAll();
+                var result = await controller.GetOrders();
 
                 // Assert
                 var actionResult = Assert.IsType<ActionResult<IEnumerable<Order>>>(result);
