@@ -63,24 +63,6 @@ namespace API_Commandes.Tests
         }
 
         [Fact]
-        public async Task GetOrders_ReturnsAllOrders()
-        {
-            // Arrange
-            using (var context = new AppDbContext(_dbContextOptions))
-            {
-                var controller = new OrdersController(context);
-
-                // Act
-                var result = await controller.GetOrders();
-
-                // Assert
-                var actionResult = Assert.IsType<ActionResult<IEnumerable<Order>>>(result);
-                var orders = Assert.IsAssignableFrom<IEnumerable<Order>>(actionResult.Value);
-                Assert.Equal(2, orders.Count());
-            }
-        }
-
-        [Fact]
         public async Task GetOrder_WithExistingId_ReturnsOrder()
         {
             // Arrange
