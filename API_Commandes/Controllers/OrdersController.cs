@@ -82,22 +82,32 @@ namespace API_Commandes.Controllers
             return NoContent();
         }
 
-        // POST: api/Orders
         [HttpPost]
         public async Task<ActionResult<Order>> PostOrder(Order order)
         {
-            if (order == null)
+            if (order == null || order.OrderItems == null || !order.OrderItems.Any())
             {
-                return BadRequest();
+                return BadRequest("Order or OrderItems cannot be null or empty.");
+            }
+
+            var httpClient = new HttpClient();
+            var stockPublisher = new StockRequestPublisher(httpClient);
+
+            // Envoyer la demande de vérification de stock et attendre la réponse
+            var stockAvailable = await stockPublisher.PublishStockCheckRequest(order.OrderItems);
+
+            if (!stockAvailable)
+            {
+                return Conflict("Stock indisponible pour l'article demandé.");
             }
 
             order.Date = DateTime.UtcNow;
-           
+
             if (order.Payments != null)
             {
                 foreach (var payment in order.Payments)
                 {
-                    payment.PaymentDate = DateTime.UtcNow; 
+                    payment.PaymentDate = DateTime.UtcNow;
                 }
             }
 
@@ -106,6 +116,8 @@ namespace API_Commandes.Controllers
 
             return CreatedAtAction(nameof(GetOrder), new { id = order.OrderId }, order);
         }
+
+
 
         // PUT: api/Orders/validate/{id}
         [HttpPut("validate/{id}")]
