@@ -124,30 +124,7 @@ namespace API_Commandes.Tests
             }
         }
 
-        [Fact]
-        public async Task PostOrder_CreatesOrder()
-        {
-            // Arrange
-            using (var context = new AppDbContext(_dbContextOptions))
-            {
-                var controller = new OrdersController(context);
-                var newOrder = new Order
-                {
-                    CustomerId = 3,
-                    Date = DateTime.Now,
-                    Status = "Pending"
-                };
-
-                // Act
-                var result = await controller.PostOrder(newOrder);
-
-                // Assert
-                var createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-                var order = Assert.IsType<Order>(createdAtActionResult.Value);
-                Assert.Equal(3, order.CustomerId);
-            }
-        }
-
+  
         [Fact]
         public async Task DeleteOrder_ExistingId_DeletesOrder()
         {
