@@ -4,6 +4,18 @@ using API_Commandes.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Ajouter le service CORS avec des options spécifiques
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAllOrigins",
+        builder =>
+        {
+            builder.AllowAnyOrigin()
+                   .AllowAnyMethod()
+                   .AllowAnyHeader();
+        });
+});
+
 // Add services to the container.
 //builder.Services.AddControllers().AddJsonOptions(options =>
 //{
@@ -29,6 +41,9 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+// Utiliser CORS
+app.UseCors("AllowAllOrigins");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
