@@ -34,7 +34,26 @@ jobs:
       - name: Build and Test Docker image
         run: |
           docker build -t api_commandes:latest .
-          
+
+            
+      - name: Depcheck
+        uses: dependency-check/Dependency-Check_Action@main
+        id: Depcheck
+        with:
+          project: 'api_commandes'
+          path: '.'
+          format: 'HTML'
+          out: 'reports' 
+          args: >
+            --failOnCVSS 7
+            --enableRetired
+
+      - name: Upload Dependency-Check report
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-check-report
+          path: reports/dependency-check-report.html
+
       - name: Login to DockerHub
         run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
@@ -63,8 +82,8 @@ jobs:
           docker pull "${{ secrets.DOCKERHUB_USERNAME }}/api_commandes:latest"
           docker stop staging-container || true
           docker rm staging-container || true
-          docker run -d --name staging-container -p 8081:80 "${{ secrets.DOCKERHUB_USERNAME }}/api_commandes:latest"
-          echo "Application deployed to http://localhost:8081"
+          docker run -d --name staging-container -p 5002:80 "${{ secrets.DOCKERHUB_USERNAME }}/api_commandes:latest"
+          echo "Application deployed to http://localhost:5002"
 
       - name: Deploy to production
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -72,5 +91,5 @@ jobs:
           docker pull "${{ secrets.DOCKERHUB_USERNAME }}/api_commandes:latest"
           docker stop production-container || true
           docker rm production-container || true
-          docker run -d --name production-container -p 8080:80 "${{ secrets.DOCKERHUB_USERNAME }}/api_commandes:latest"
-          echo "Application deployed to http://localhost:8080"
+          docker run -d --name production-container -p 5002:80 "${{ secrets.DOCKERHUB_USERNAME }}/api_commandes:latest"
+          echo "Application deployed to http://localhost:5002"
