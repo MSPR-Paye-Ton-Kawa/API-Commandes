@@ -22,45 +22,6 @@ namespace API_Commandes.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Order>>> GetOrders()
         {
-            return await _context.Orders.ToListAsync();
-        }
-
-        // GET: api/Orders/with-payments
-        [HttpGet("with-payments")]
-        public async Task<ActionResult<IEnumerable<Order>>> GetOrdersWithPayments()
-        {
-            var orders = await _context.Orders
-                .Include(o => o.Payments)
-                .ToListAsync();
-
-            if (orders == null)
-            {
-                return NotFound();
-            }
-
-            return orders;
-        }
-
-        // GET: api/Orders/with-orderitems
-        [HttpGet("with-orderitems")]
-        public async Task<ActionResult<IEnumerable<Order>>> GetOrdersWithOrderItems()
-        {
-            var orders = await _context.Orders
-                .Include(o => o.OrderItems)
-                .ToListAsync();
-
-            if (orders == null)
-            {
-                return NotFound();
-            }
-
-            return orders;
-        }
-
-        // GET: api/Orders/with-all
-        [HttpGet("with-all")]
-        public async Task<ActionResult<IEnumerable<Order>>> GetOrdersWithAll()
-        {
             var orders = await _context.Orders
                  .Include(o => o.OrderItems)
                  .Include(o => o.Payments)
@@ -121,19 +82,60 @@ namespace API_Commandes.Controllers
             return NoContent();
         }
 
-        // POST: api/Orders
         [HttpPost]
         public async Task<ActionResult<Order>> PostOrder(Order order)
         {
-            if (order == null)
+            if (order == null || order.OrderItems == null || !order.OrderItems.Any())
             {
-                return BadRequest();
+                return BadRequest("Order or OrderItems cannot be null or empty.");
+            }
+
+            var httpClient = new HttpClient();
+            var stockPublisher = new StockRequestPublisher(httpClient);
+
+            // Envoyer la demande de vérification de stock et attendre la réponse
+            var stockAvailable = await stockPublisher.PublishStockCheckRequest(order.OrderItems);
+
+            if (!stockAvailable)
+            {
+                return Conflict("Stock indisponible pour l'article demandé.");
+            }
+
+            order.Date = DateTime.UtcNow;
+
+            if (order.Payments != null)
+            {
+                foreach (var payment in order.Payments)
+                {
+                    payment.PaymentDate = DateTime.UtcNow;
+                }
             }
 
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetOrder), new { id = order.OrderId }, order);
+        }
+
+
+
+        // PUT: api/Orders/validate/{id}
+        [HttpPut("validate/{id}")]
+        public async Task<IActionResult> ValidateOrder(int id)
+        {
+            var order = await _context.Orders.FindAsync(id);
+            if (order == null)
+            {
+                return NotFound();
+            }
+
+            // Mettre à jour le statut à "Validated"
+            order.Status = "Validated";
+
+            _context.Entry(order).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
 
         // DELETE: api/Orders/5
