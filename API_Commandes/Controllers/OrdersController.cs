@@ -29,41 +29,45 @@ namespace API_Commandes.Controllers
         [HttpPost("place-order")]
         public async Task<IActionResult> PlaceOrder([FromBody] Order order)
         {
-            // Publish a message via rabbitmq to check stock (api products)
-            _stockCheckPublisher.PublishStockCheckRequest(order);
+            using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
+                // Publish a message via RabbitMQ to check stock (api products)
+                _stockCheckPublisher.PublishStockCheckRequest(order);
                 // Wait for the answer with a delay
                 var stockResponse = await _stockCheckResponseConsumer.WaitForStockCheckResponseAsync();
 
                 if (stockResponse != null && stockResponse.IsStockAvailable)
                 {
                     order.Status = "Validated";
-                    order.Date = DateTime.Now; 
-                    _context.Orders.Add(order); 
+                    order.Date = DateTime.Now;
+                    _context.Orders.Add(order);
                     await _context.SaveChangesAsync();
 
-                    // Recharger la commande avec ses relations
+                    await transaction.CommitAsync();
+
                     var newOrder = await _context.Orders
                         .Include(o => o.OrderItems)
                         .Include(o => o.Payments)
-                        .FirstOrDefaultAsync(o => o.OrderId == o.OrderId);
+                        .FirstOrDefaultAsync(o => o.OrderId == order.OrderId);
 
                     return Ok(newOrder);
                 }
                 else
                 {
+                    await transaction.RollbackAsync(); 
                     return BadRequest(new { Message = $"Order {order.OrderId} is rejected due to insufficient stock." });
                 }
             }
             catch (TimeoutException ex)
             {
+                await transaction.RollbackAsync(); 
                 return StatusCode(504, new { Message = "Stock check request timed out.", Error = ex.Message });
             }
             catch (Exception ex)
             {
-   
+                await transaction.RollbackAsync(); 
                 return StatusCode(500, new { Message = "An error occurred while processing the order.", Error = ex.Message });
             }
         }
