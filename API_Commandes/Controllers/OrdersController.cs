@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using API_Commandes.Models;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Serilog;
+using RabbitMQ.Client;
+using API_Commandes.Messaging;
 
 namespace API_Commandes.Controllers
 {
@@ -11,12 +11,92 @@ namespace API_Commandes.Controllers
     [ApiController]
     public class OrdersController : ControllerBase
     {
-        private readonly AppDbContext _context;
 
-        public OrdersController(AppDbContext context)
+        private readonly AppDbContext _context;
+        private readonly IStockCheckPublisher _stockCheckPublisher;
+        private readonly IStockCheckResponseConsumer _stockCheckResponseConsumer;
+        private readonly ICustomerCheckPublisher _customerCheckPublisher;
+        private readonly ICustomerCheckResponseConsumer _customerCheckResponseConsumer;
+        private readonly ILogger<OrdersController> _logger;
+
+        public OrdersController(AppDbContext context,
+                              IStockCheckPublisher stockCheckPublisher,
+                              IStockCheckResponseConsumer stockCheckResponseConsumer,
+                              ICustomerCheckPublisher customerCheckPublisher,
+                              ICustomerCheckResponseConsumer customerCheckResponseConsumer, // Ajouté ici
+                              ILogger<OrdersController> logger)
         {
             _context = context;
+            _stockCheckPublisher = stockCheckPublisher;
+            _stockCheckResponseConsumer = stockCheckResponseConsumer;
+            _customerCheckPublisher = customerCheckPublisher;
+            _customerCheckResponseConsumer = customerCheckResponseConsumer; // Initialisation
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
+
+
+        [HttpPost("place-order")]
+        public async Task<IActionResult> PlaceOrder([FromBody] Order order)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Publier un message via RabbitMQ pour vérifier le client
+                _customerCheckPublisher.PublishCustomerCheckRequest(order.CustomerId);
+
+                // Attendre la réponse avec un délai
+                var clientResponse = await _customerCheckResponseConsumer.WaitForCustomerCheckResponseAsync();
+
+                if (clientResponse != null && clientResponse.IsCustomerValid)
+                {
+                    // Publier un message via RabbitMQ pour vérifier le stock
+                    _stockCheckPublisher.PublishStockCheckRequest(order);
+
+                    // Attendre la réponse avec un délai
+                    var stockResponse = await _stockCheckResponseConsumer.WaitForStockCheckResponseAsync();
+
+                    if (stockResponse != null && stockResponse.IsStockAvailable)
+                    {
+                        order.Status = "Validated";
+                        order.Date = DateTime.Now;
+                        _context.Orders.Add(order);
+                        await _context.SaveChangesAsync();
+
+                        await transaction.CommitAsync();
+
+                        var newOrder = await _context.Orders
+                            .Include(o => o.OrderItems)
+                            .Include(o => o.Payments)
+                            .FirstOrDefaultAsync(o => o.OrderId == order.OrderId);
+
+                        return Ok(newOrder);
+                    }
+                    else
+                    {
+                        await transaction.RollbackAsync();
+                        return BadRequest(new { Message = $"Order {order.OrderId} is rejected due to insufficient stock." });
+                    }
+                }
+                else
+                {
+                    await transaction.RollbackAsync();
+                    return BadRequest(new { Message = $"Order {order.OrderId} is rejected due to unverified client." });
+                }
+            }
+            catch (TimeoutException ex)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(504, new { Message = "Stock check request timed out.", Error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, new { Message = "An error occurred while processing the order.", Error = ex.Message });
+            }
+        }
+
+
 
         // GET: api/Orders
         [HttpGet]
@@ -54,18 +134,43 @@ namespace API_Commandes.Controllers
 
         // PUT: api/Orders/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutOrder(int id, Order order)
+        public async Task<ActionResult<Order>> PutOrder(int id, Order order)
         {
             if (id != order.OrderId)
             {
                 return BadRequest();
             }
 
-            _context.Entry(order).State = EntityState.Modified;
+            var existingOrder = await _context.Orders
+                .Include(o => o.OrderItems)
+                .Include(o => o.Payments)
+                .FirstOrDefaultAsync(o => o.OrderId == id);
+
+            if (existingOrder == null)
+            {
+                return NotFound();
+            }
+
+            // Mise à jour des propriétés
+            _context.Entry(existingOrder).CurrentValues.SetValues(order);
+
+            // Mise à jour des OrderItems
+            existingOrder.OrderItems = order.OrderItems;
+
+            // Mise à jour des Payments
+            existingOrder.Payments = order.Payments;
 
             try
             {
                 await _context.SaveChangesAsync();
+
+                // Recharger la commande avec ses relations
+                var updatedOrder = await _context.Orders
+                    .Include(o => o.OrderItems)
+                    .Include(o => o.Payments)
+                    .FirstOrDefaultAsync(o => o.OrderId == id);
+
+                return Ok(updatedOrder);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -73,69 +178,8 @@ namespace API_Commandes.Controllers
                 {
                     return NotFound();
                 }
-                else
-                {
-                    throw;
-                }
+                throw;
             }
-
-            return NoContent();
-        }
-
-        [HttpPost]
-        public async Task<ActionResult<Order>> PostOrder(Order order)
-        {
-            if (order == null || order.OrderItems == null || !order.OrderItems.Any())
-            {
-                return BadRequest("Order or OrderItems cannot be null or empty.");
-            }
-
-            var httpClient = new HttpClient();
-            var stockPublisher = new StockRequestPublisher(httpClient);
-
-            // Envoyer la demande de vérification de stock et attendre la réponse
-            var stockAvailable = await stockPublisher.PublishStockCheckRequest(order.OrderItems);
-
-            if (!stockAvailable)
-            {
-                return Conflict("Stock indisponible pour l'article demandé.");
-            }
-
-            order.Date = DateTime.UtcNow;
-
-            if (order.Payments != null)
-            {
-                foreach (var payment in order.Payments)
-                {
-                    payment.PaymentDate = DateTime.UtcNow;
-                }
-            }
-
-            _context.Orders.Add(order);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetOrder), new { id = order.OrderId }, order);
-        }
-
-
-
-        // PUT: api/Orders/validate/{id}
-        [HttpPut("validate/{id}")]
-        public async Task<IActionResult> ValidateOrder(int id)
-        {
-            var order = await _context.Orders.FindAsync(id);
-            if (order == null)
-            {
-                return NotFound();
-            }
-
-            // Mettre à jour le statut à "Validated"
-            order.Status = "Validated";
-
-            _context.Entry(order).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
-
-            return NoContent();
         }
 
         // DELETE: api/Orders/5
