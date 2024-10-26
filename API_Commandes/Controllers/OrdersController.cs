@@ -15,13 +15,22 @@ namespace API_Commandes.Controllers
         private readonly AppDbContext _context;
         private readonly IStockCheckPublisher _stockCheckPublisher;
         private readonly IStockCheckResponseConsumer _stockCheckResponseConsumer;
+        private readonly ICustomerCheckPublisher _customerCheckPublisher;
+        private readonly ICustomerCheckResponseConsumer _customerCheckResponseConsumer;
         private readonly ILogger<OrdersController> _logger;
 
-        public OrdersController(AppDbContext context, IStockCheckPublisher stockCheckPublisher, IStockCheckResponseConsumer stockCheckResponseConsumer, ILogger<OrdersController> logger)
+        public OrdersController(AppDbContext context,
+                              IStockCheckPublisher stockCheckPublisher,
+                              IStockCheckResponseConsumer stockCheckResponseConsumer,
+                              ICustomerCheckPublisher customerCheckPublisher,
+                              ICustomerCheckResponseConsumer customerCheckResponseConsumer, // Ajouté ici
+                              ILogger<OrdersController> logger)
         {
             _context = context;
             _stockCheckPublisher = stockCheckPublisher;
             _stockCheckResponseConsumer = stockCheckResponseConsumer;
+            _customerCheckPublisher = customerCheckPublisher;
+            _customerCheckResponseConsumer = customerCheckResponseConsumer; // Initialisation
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -33,44 +42,60 @@ namespace API_Commandes.Controllers
 
             try
             {
-                // Publish a message via RabbitMQ to check stock (api products)
-                _stockCheckPublisher.PublishStockCheckRequest(order);
-                // Wait for the answer with a delay
-                var stockResponse = await _stockCheckResponseConsumer.WaitForStockCheckResponseAsync();
+                // Publier un message via RabbitMQ pour vérifier le client
+                _customerCheckPublisher.PublishCustomerCheckRequest(order.CustomerId);
 
-                if (stockResponse != null && stockResponse.IsStockAvailable)
+                // Attendre la réponse avec un délai
+                var clientResponse = await _customerCheckResponseConsumer.WaitForCustomerCheckResponseAsync();
+
+                if (clientResponse != null && clientResponse.IsCustomerValid)
                 {
-                    order.Status = "Validated";
-                    order.Date = DateTime.Now;
-                    _context.Orders.Add(order);
-                    await _context.SaveChangesAsync();
+                    // Publier un message via RabbitMQ pour vérifier le stock
+                    _stockCheckPublisher.PublishStockCheckRequest(order);
 
-                    await transaction.CommitAsync();
+                    // Attendre la réponse avec un délai
+                    var stockResponse = await _stockCheckResponseConsumer.WaitForStockCheckResponseAsync();
 
-                    var newOrder = await _context.Orders
-                        .Include(o => o.OrderItems)
-                        .Include(o => o.Payments)
-                        .FirstOrDefaultAsync(o => o.OrderId == order.OrderId);
+                    if (stockResponse != null && stockResponse.IsStockAvailable)
+                    {
+                        order.Status = "Validated";
+                        order.Date = DateTime.Now;
+                        _context.Orders.Add(order);
+                        await _context.SaveChangesAsync();
 
-                    return Ok(newOrder);
+                        await transaction.CommitAsync();
+
+                        var newOrder = await _context.Orders
+                            .Include(o => o.OrderItems)
+                            .Include(o => o.Payments)
+                            .FirstOrDefaultAsync(o => o.OrderId == order.OrderId);
+
+                        return Ok(newOrder);
+                    }
+                    else
+                    {
+                        await transaction.RollbackAsync();
+                        return BadRequest(new { Message = $"Order {order.OrderId} is rejected due to insufficient stock." });
+                    }
                 }
                 else
                 {
-                    await transaction.RollbackAsync(); 
-                    return BadRequest(new { Message = $"Order {order.OrderId} is rejected due to insufficient stock." });
+                    await transaction.RollbackAsync();
+                    return BadRequest(new { Message = $"Order {order.OrderId} is rejected due to unverified client." });
                 }
             }
             catch (TimeoutException ex)
             {
-                await transaction.RollbackAsync(); 
+                await transaction.RollbackAsync();
                 return StatusCode(504, new { Message = "Stock check request timed out.", Error = ex.Message });
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync(); 
+                await transaction.RollbackAsync();
                 return StatusCode(500, new { Message = "An error occurred while processing the order.", Error = ex.Message });
             }
         }
+
 
 
         // GET: api/Orders
