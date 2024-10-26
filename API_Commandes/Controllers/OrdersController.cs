@@ -13,17 +13,18 @@ namespace API_Commandes.Controllers
     {
 
         private readonly AppDbContext _context;
-        private readonly StockCheckPublisher _stockCheckPublisher;
-        private readonly StockCheckResponseConsumer _stockCheckResponseConsumer;
+        private readonly IStockCheckPublisher _stockCheckPublisher;
+        private readonly IStockCheckResponseConsumer _stockCheckResponseConsumer;
         private readonly ILogger<OrdersController> _logger;
 
-        public OrdersController(AppDbContext context, StockCheckPublisher stockCheckPublisher, StockCheckResponseConsumer stockCheckResponseConsumer, ILogger<OrdersController> logger)
+        public OrdersController(AppDbContext context, IStockCheckPublisher stockCheckPublisher, IStockCheckResponseConsumer stockCheckResponseConsumer, ILogger<OrdersController> logger)
         {
             _context = context;
             _stockCheckPublisher = stockCheckPublisher;
             _stockCheckResponseConsumer = stockCheckResponseConsumer;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
+
 
         [HttpPost("place-order")]
         public async Task<IActionResult> PlaceOrder([FromBody] Order order)
@@ -41,9 +42,15 @@ namespace API_Commandes.Controllers
                     order.Status = "Validated";
                     order.Date = DateTime.Now; 
                     _context.Orders.Add(order); 
-                    await _context.SaveChangesAsync(); 
+                    await _context.SaveChangesAsync();
 
-                    return Ok(new { Message = $"Order {order.OrderId} is validated." });
+                    // Recharger la commande avec ses relations
+                    var newOrder = await _context.Orders
+                        .Include(o => o.OrderItems)
+                        .Include(o => o.Payments)
+                        .FirstOrDefaultAsync(o => o.OrderId == o.OrderId);
+
+                    return Ok(newOrder);
                 }
                 else
                 {
@@ -56,6 +63,7 @@ namespace API_Commandes.Controllers
             }
             catch (Exception ex)
             {
+   
                 return StatusCode(500, new { Message = "An error occurred while processing the order.", Error = ex.Message });
             }
         }
@@ -97,18 +105,43 @@ namespace API_Commandes.Controllers
 
         // PUT: api/Orders/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutOrder(int id, Order order)
+        public async Task<ActionResult<Order>> PutOrder(int id, Order order)
         {
             if (id != order.OrderId)
             {
                 return BadRequest();
             }
 
-            _context.Entry(order).State = EntityState.Modified;
+            var existingOrder = await _context.Orders
+                .Include(o => o.OrderItems)
+                .Include(o => o.Payments)
+                .FirstOrDefaultAsync(o => o.OrderId == id);
+
+            if (existingOrder == null)
+            {
+                return NotFound();
+            }
+
+            // Mise à jour des propriétés
+            _context.Entry(existingOrder).CurrentValues.SetValues(order);
+
+            // Mise à jour des OrderItems
+            existingOrder.OrderItems = order.OrderItems;
+
+            // Mise à jour des Payments
+            existingOrder.Payments = order.Payments;
 
             try
             {
                 await _context.SaveChangesAsync();
+
+                // Recharger la commande avec ses relations
+                var updatedOrder = await _context.Orders
+                    .Include(o => o.OrderItems)
+                    .Include(o => o.Payments)
+                    .FirstOrDefaultAsync(o => o.OrderId == id);
+
+                return Ok(updatedOrder);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -116,13 +149,8 @@ namespace API_Commandes.Controllers
                 {
                     return NotFound();
                 }
-                else
-                {
-                    throw;
-                }
+                throw;
             }
-
-            return NoContent();
         }
 
         // DELETE: api/Orders/5

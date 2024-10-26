@@ -7,8 +7,12 @@ using System.Threading.Channels;
 
 namespace API_Commandes.Messaging
 {
-    public class StockCheckPublisher : IDisposable
-     {
+    public interface IStockCheckPublisher
+    {
+        void PublishStockCheckRequest(Order order);
+    }
+    public class StockCheckPublisher : IStockCheckPublisher, IDisposable
+    {
         private readonly IModel _channel;
         private readonly ILogger<StockCheckPublisher> _logger; 
 

@@ -4,7 +4,7 @@ namespace API_Commandes.Models
     public class Order
     {
         public int OrderId { get; set; }
-        public int CustomerId { get; set; }  // Managed externally
+        public int CustomerId { get; set; }  
         public DateTime Date { get; set; }
         public string Status { get; set; }
 
