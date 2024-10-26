@@ -45,8 +45,8 @@ builder.Services.AddSingleton<IConnection>(sp =>
     return factory.CreateConnection();
 });
 
-builder.Services.AddSingleton<StockCheckPublisher>();
-builder.Services.AddSingleton<StockCheckResponseConsumer>();
+builder.Services.AddSingleton<IStockCheckPublisher, StockCheckPublisher>();
+builder.Services.AddSingleton<IStockCheckResponseConsumer, StockCheckResponseConsumer>();
 
 // Configuration de Swagger
 builder.Services.AddEndpointsApiExplorer();
