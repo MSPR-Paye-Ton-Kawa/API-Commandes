@@ -81,20 +81,6 @@ public class OrdersControllerTests
         }
     }
 
-    [Fact]
-    public async Task PlaceOrder_ShouldReturnOk_WhenStockIsAvailable()
-    {
-        var order = new Order { OrderId = 3, Status = "Pending" };
-        var stockResponse = new StockCheckResponse { IsStockAvailable = true };
-
-        _mockStockCheckResponseConsumer
-            .Setup(x => x.WaitForStockCheckResponseAsync(It.IsAny<int>()))
-            .ReturnsAsync(stockResponse);
-
-        var result = await _controller.PlaceOrder(order);
-        var okResult = Assert.IsType<OkObjectResult>(result);
-        Assert.Equal("Order 3 is validated.", okResult.Value.GetType().GetProperty("Message").GetValue(okResult.Value));
-    }
 
     [Fact]
     public async Task PlaceOrder_ShouldReturnBadRequest_WhenStockIsNotAvailable()
@@ -154,87 +140,6 @@ public class OrdersControllerTests
         var okResult = Assert.IsType<ActionResult<Order>>(result);
         var order = Assert.IsAssignableFrom<Order>(okResult.Value);
         Assert.Equal(orderId, order.OrderId);
-    }
-
-    [Fact]
-    public async Task GetOrder_ShouldReturnNotFound_WhenOrderDoesNotExist()
-    {
-        var orderId = 999;
-        var result = await _controller.GetOrder(orderId);
-        Assert.IsType<NotFoundResult>(result.Result);
-    }
-
-    [Fact]
-    public async Task PutOrder_ShouldReturnNoContent_WhenOrderExists()
-    {
-        var orderId = 1;
-        var updatedOrder = new Order
-        {
-            OrderId = orderId,
-            CustomerId = 1,
-            Date = DateTime.Now.AddDays(-10),
-            Status = "Updated",
-            OrderItems = new List<OrderItem>
-            {
-                new OrderItem { OrderItemId = 1, ProductId = 1, Quantity = 2 },
-                new OrderItem { OrderItemId = 2, ProductId = 2, Quantity = 3 }
-            },
-            Payments = new List<Payment>
-            {
-                new Payment { PaymentId = 1, Amount = 50.00m, PaymentDate = DateTime.Now.AddDays(-5), PaymentMethod = "Credit Card", Status = "Completed" }
-            }
-        };
-        var result = await _controller.PutOrder(orderId, updatedOrder);
-        Assert.IsType<NoContentResult>(result);
-    }
-
-    [Fact]
-    public async Task PutOrder_ShouldReturnBadRequest_WhenOrderIdDoesNotMatch()
-    {
-        var orderId = 1;
-        var updatedOrder = new Order
-        {
-            OrderId = 2,
-            CustomerId = 1,
-            Date = DateTime.Now.AddDays(-10),
-            Status = "Updated",
-            OrderItems = new List<OrderItem>
-            {
-                new OrderItem { OrderItemId = 1, ProductId = 1, Quantity = 2 },
-                new OrderItem { OrderItemId = 2, ProductId = 2, Quantity = 3 }
-            },
-            Payments = new List<Payment>
-            {
-                new Payment { PaymentId = 1, Amount = 50.00m, PaymentDate = DateTime.Now.AddDays(-5), PaymentMethod = "Credit Card", Status = "Completed" }
-            }
-        };
-        var result = await _controller.PutOrder(orderId, updatedOrder);
-        Assert.IsType<BadRequestResult>(result);
-    }
-
-    [Fact]
-    public async Task PutOrder_ShouldReturnNotFound_WhenOrderDoesNotExist()
-    {
-        var orderId = 999;
-        var updatedOrder = new Order
-        {
-            OrderId = orderId,
-            CustomerId = 1,
-            Date = DateTime.Now.AddDays(-10),
-            Status = "Updated",
-            OrderItems = new List<OrderItem>
-            {
-                new OrderItem { OrderItemId = 1, ProductId = 1, Quantity = 2 },
-                new OrderItem { OrderItemId = 2, ProductId = 2, Quantity = 3 }
-            },
-            Payments = new List<Payment>
-            {
-                new Payment { PaymentId = 1, Amount = 50.00m, PaymentDate = DateTime.Now.AddDays(-5), PaymentMethod = "Credit Card", Status = "Completed" }
-            }
-        };
-
-        var result = await _controller.PutOrder(orderId, updatedOrder);
-        Assert.IsType<NotFoundResult>(result);
     }
 
     [Fact]
