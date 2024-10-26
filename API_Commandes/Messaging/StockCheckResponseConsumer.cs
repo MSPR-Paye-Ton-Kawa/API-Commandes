@@ -8,7 +8,7 @@ namespace API_Commandes.Messaging
 {
     public interface IStockCheckResponseConsumer
     {
-        Task<StockCheckResponse> WaitForStockCheckResponseAsync(int timeoutMilliseconds = 5000);
+        Task<StockCheckResponse> WaitForStockCheckResponseAsync(int timeoutMilliseconds = 100000);
     }
     public class StockCheckResponseConsumer : IStockCheckResponseConsumer, IDisposable
     {
@@ -42,7 +42,7 @@ namespace API_Commandes.Messaging
             _channel.BasicConsume(queue: "stock_check_response_queue", autoAck: true, consumer: consumer);
         }
 
-        public async Task<StockCheckResponse> WaitForStockCheckResponseAsync(int timeoutMilliseconds = 10000)
+        public async Task<StockCheckResponse> WaitForStockCheckResponseAsync(int timeoutMilliseconds = 100000)
         {
             // Create a TaskCompletionSource that will be completed when a stock response is received
             _responseTaskSource = new TaskCompletionSource<StockCheckResponse>();

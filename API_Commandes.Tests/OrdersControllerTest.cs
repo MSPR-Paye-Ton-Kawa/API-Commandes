@@ -15,8 +15,10 @@ public class OrdersControllerTests
     private readonly DbContextOptions<AppDbContext> _dbContextOptions;
     private readonly Mock<IStockCheckPublisher> _mockStockCheckPublisher;
     private readonly Mock<IStockCheckResponseConsumer> _mockStockCheckResponseConsumer;
-    private readonly Mock<ILogger<OrdersController>> _mockLogger;
+    private readonly Mock<ICustomerCheckPublisher> _mockCustomerCheckPublisher;
+    private readonly Mock<ICustomerCheckResponseConsumer> _mockCustomerCheckResponseConsumer; 
     private readonly OrdersController _controller;
+    private readonly Mock<ILogger<OrdersController>> _mockLogger;
 
     public OrdersControllerTests()
     {
@@ -29,12 +31,16 @@ public class OrdersControllerTests
 
         _mockStockCheckPublisher = new Mock<IStockCheckPublisher>();
         _mockStockCheckResponseConsumer = new Mock<IStockCheckResponseConsumer>();
+        _mockCustomerCheckPublisher = new Mock<ICustomerCheckPublisher>();
+        _mockCustomerCheckResponseConsumer = new Mock<ICustomerCheckResponseConsumer>(); 
         _mockLogger = new Mock<ILogger<OrdersController>>();
 
         _controller = new OrdersController(
             new AppDbContext(_dbContextOptions),
             _mockStockCheckPublisher.Object,
             _mockStockCheckResponseConsumer.Object,
+            _mockCustomerCheckPublisher.Object,
+            _mockCustomerCheckResponseConsumer.Object,
             _mockLogger.Object
         );
     }
