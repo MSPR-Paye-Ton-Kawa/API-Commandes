@@ -3,6 +3,7 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Text;
 using System;
+using Prometheus;
 
 namespace API_Commandes.Messaging
 {
@@ -13,7 +14,8 @@ namespace API_Commandes.Messaging
     public class StockCheckResponseConsumer : IStockCheckResponseConsumer, IDisposable
     {
         private readonly IModel _channel;
-        // Task that will be completed when a stock response is received
+        private static readonly Counter _messagesConsumed = Metrics.CreateCounter("stock_check_responses_received", "Total number of Stock Check responses received");
+
         private TaskCompletionSource<StockCheckResponse> _responseTaskSource; 
 
         public StockCheckResponseConsumer(IConnection connection)
@@ -37,6 +39,7 @@ namespace API_Commandes.Messaging
 
                 // Complete the task with the stock check response
                 _responseTaskSource?.SetResult(response);
+                _messagesConsumed.Inc();
             };
 
             _channel.BasicConsume(queue: "stock_check_response_queue", autoAck: true, consumer: consumer);
