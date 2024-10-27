@@ -1,9 +1,8 @@
-﻿using API_Commandes.Models;
+﻿
 using RabbitMQ.Client;
-using System;
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
+using Prometheus;
 
 namespace API_Commandes.Messaging
 {
@@ -16,6 +15,7 @@ namespace API_Commandes.Messaging
     {
         private readonly IModel _channel;
         private readonly ILogger<CustomerCheckPublisher> _logger;
+        private static readonly Counter _messagesPublished = Metrics.CreateCounter("customer_check_messages_published", "Total number of Customer Check messages published");
 
         public CustomerCheckPublisher(IConnection connection, ILogger<CustomerCheckPublisher> logger)
         {
@@ -44,6 +44,8 @@ namespace API_Commandes.Messaging
                                   routingKey: "customer_check_request",
                                   basicProperties: null,
                                   body: requestBody);
+
+            _messagesPublished.Inc();
             _logger.LogInformation($"Customer check request for client ID: {clientId} published.");
 
         }

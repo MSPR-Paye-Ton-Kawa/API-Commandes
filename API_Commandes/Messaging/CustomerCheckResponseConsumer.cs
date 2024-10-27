@@ -4,6 +4,7 @@ using RabbitMQ.Client.Events;
 using System.Text;
 using System.Threading.Tasks;
 using System;
+using Prometheus;
 
 namespace API_Commandes.Messaging
 {
@@ -16,6 +17,7 @@ namespace API_Commandes.Messaging
     {
         private readonly IModel _channel;
         private TaskCompletionSource<CustomerCheckResponse> _responseTaskSource;
+        private static readonly Counter _messagesConsumed = Metrics.CreateCounter("customer_check_responses_received", "Total number of Customer Check responses received");
 
         public CustomerCheckResponseConsumer(IConnection connection)
         {
@@ -33,8 +35,8 @@ namespace API_Commandes.Messaging
                 var body = args.Body.ToArray();
                 var message = Encoding.UTF8.GetString(body);
                 var response = JsonSerializer.Deserialize<CustomerCheckResponse>(message);
-
                 _responseTaskSource?.SetResult(response);
+                _messagesConsumed.Inc();
             };
 
             _channel.BasicConsume(queue: "customer_check_response_queue", autoAck: true, consumer: consumer);
