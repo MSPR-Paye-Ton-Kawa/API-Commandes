@@ -1,4 +1,5 @@
 ﻿using API_Commandes.Models;
+using Prometheus;
 using RabbitMQ.Client;
 using System.Text;
 using System.Text.Json;
@@ -14,7 +15,8 @@ namespace API_Commandes.Messaging
     public class StockCheckPublisher : IStockCheckPublisher, IDisposable
     {
         private readonly IModel _channel;
-        private readonly ILogger<StockCheckPublisher> _logger; 
+        private readonly ILogger<StockCheckPublisher> _logger;
+        private static readonly Counter _messagesPublished = Metrics.CreateCounter("stock_check_messages_published", "Total number of Stock Check messages published");
 
         public StockCheckPublisher(IConnection connection, ILogger<StockCheckPublisher> logger)
         {
@@ -27,6 +29,8 @@ namespace API_Commandes.Messaging
                                  exclusive: false,
                                  autoDelete: false,
                                  arguments: null);
+
+            _messagesPublished.Inc();
             _logger.LogInformation("StockCheckPublisher initialized and queue declared.");
         }
 
